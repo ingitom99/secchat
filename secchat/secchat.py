@@ -1,23 +1,19 @@
-"""Welcome to Reflex! This file outlines the steps to create a basic app."""
+"""Reflex app"""
 
 import os
-
-import reflex as rx
 from dotenv import load_dotenv
+import reflex as rx
+
+from .scraper import get_all_data_for_ticker
+from .engines import (
+    make_engines,
+    save_index,
+    get_indexed_tickers
+)
 
 load_dotenv()
 
 openai_api_key = os.getenv("OPENAI_API_KEY")
-
-from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
-
-from .secscraper import get_all_data_for_ticker
-from .secagent import make_agent
-
-agent = make_agent(
-    "./data/TEST",
-    openai_api_key
-    )
 
 class State(rx.State):
     """The app state."""
@@ -25,17 +21,28 @@ class State(rx.State):
     ticker: str
     query: str
     response: str
-    agent
+    indexed_tickers: list[str] = get_indexed_tickers()
 
-    def change_agent(self):
-        get_all_data_for_ticker(self.ticker)
-        self.agent = make_agent(
-            f"./data/{self.ticker}",
-            openai_api_key
-            )
+    def set_ticker(self, value: str):
+        self.ticker = value.lower()
+
+    def add_ticker(self):
+        # Check if the ticker already exists
+        if self.ticker.lower() in self.indexed_tickers:
+            return None
+        else:
+            # Save the ticker to ./indexed.txt in a new line
+            with open("./indexed.txt", "a", encoding="utf-8") as f:
+                f.write(f"{self.ticker.lower()}\n")  # Add \n for new line
+
+            get_all_data_for_ticker(self.ticker)
+            save_index(self.ticker)
+            self.indexed_tickers = get_indexed_tickers()
+            self.engines = make_engines(self.indexed_tickers)
 
     def respond(self):
-        response = self.agent.query(self.query)
+        engines = make_engines(self.indexed_tickers)
+        response = engines[self.ticker].query(self.query)
         self.response = response.response
 
 def navbar() -> rx.Component:
@@ -68,7 +75,7 @@ def ticker() -> rx.Component:
             ),
             rx.hstack(
                 rx.input(
-                    placeholder="APPL",
+                    placeholder="aapl",
                     radius="large",
                     color_scheme="gray",
                     on_change=State.set_ticker,
@@ -77,7 +84,7 @@ def ticker() -> rx.Component:
                     "Submit",
                     color_scheme="gray",
                     radius="large",
-                    on_click=State.change_agent,
+                    on_click=State.add_ticker,
                 ),
             ),
         ),

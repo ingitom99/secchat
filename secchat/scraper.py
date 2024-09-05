@@ -70,6 +70,7 @@ def get_data_by_tag(company_data : dict, tag : str, taxonomy : str):
     for unit in company_data['facts'][taxonomy][tag]['units'].keys():
         for filing in company_data['facts'][taxonomy][tag]['units'][unit]:
             concept['filings'].append({
+                'title': tag + ' in ' + filing['fy'] + f'({filing['fp']})' + 'filed in ' + filing['form'],
                 'unit': unit,
                 'value': filing['val'],
                 'fiscal_year': filing['fy'],
@@ -77,6 +78,7 @@ def get_data_by_tag(company_data : dict, tag : str, taxonomy : str):
                 'form_type': filing['form'],
                 'date_filed': filing['filed']
             })
+
     return concept
 
 def get_all_data(company_data : dict, all_tags : dict) -> dict:
