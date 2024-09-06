@@ -12,10 +12,11 @@ from .engines import (
 )
 
 load_dotenv()
-
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
+
 class State(rx.State):
+
     """The app state."""
 
     ticker: str
@@ -23,13 +24,13 @@ class State(rx.State):
     response: str
     indexed_tickers: list[str] = get_indexed_tickers()
 
-    def set_ticker(self, value: str):
-        self.ticker = value.lower()
+    def update_ticker(self, form_data: dict):
+        
+        self.ticker = form_data["ticker"].lower()
 
-    def add_ticker(self):
-        # Check if the ticker already exists
-        if self.ticker.lower() in self.indexed_tickers:
+        if self.ticker in self.indexed_tickers:
             return None
+        
         else:
             # Save the ticker to ./indexed.txt in a new line
             with open("./indexed.txt", "a", encoding="utf-8") as f:
@@ -39,8 +40,10 @@ class State(rx.State):
             save_index(self.ticker)
             self.indexed_tickers = get_indexed_tickers()
             self.engines = make_engines(self.indexed_tickers)
+        
 
-    def respond(self):
+    def respond(self, form_data: dict):
+        self.query = form_data["query"]
         engines = make_engines(self.indexed_tickers)
         response = engines[self.ticker].query(self.query)
         self.response = response.response
@@ -59,14 +62,14 @@ def navbar() -> rx.Component:
             rx.color_mode.button(),
         ),
         background_color="#ef233c",
-        padding=10,
         width="100%",
-        height="60px",
+        padding=10,
+        height="60px"
     )
 
 
 def ticker() -> rx.Component:
-    return rx.card(
+    return rx.form(
         rx.vstack(
             rx.heading(
                 "Ticker",
@@ -75,24 +78,24 @@ def ticker() -> rx.Component:
             ),
             rx.hstack(
                 rx.input(
-                    placeholder="aapl",
-                    radius="large",
-                    color_scheme="gray",
-                    on_change=State.set_ticker,
+                    name="ticker",
+                    type="text",
+                    placeholder=State.ticker,
+                    radius="large"
                 ),
                 rx.button(
                     "Submit",
-                    color_scheme="gray",
-                    radius="large",
-                    on_click=State.add_ticker,
+                    type="submit",
+                    radius="large"
                 ),
             ),
+            align="stretch"
         ),
-        width="100%",
+        on_submit=State.update_ticker
     )
 
 def question() -> rx.Component:
-    return rx.card(
+    return rx.form(
         rx.vstack(
             rx.heading(
                 "Ask a question...",
@@ -101,17 +104,18 @@ def question() -> rx.Component:
             ),
             rx.text_area(
                 placeholder="what was the 2021 revenue?",
-                radius="large",
-                color_scheme="gray",
-                on_change=State.set_query,
+                name="query",
+                radius="large"
             ),
             rx.button(
                 "Submit",
-                color_scheme="gray",
-                radius="large",
-                on_click=State.respond,
-            )
-        )
+                type="submit",
+                radius="large"
+            ),
+            align="stretch"
+        ),
+        on_submit=State.respond
+        
     )
 
 def response() -> rx.Component:
@@ -131,24 +135,37 @@ def response() -> rx.Component:
     )
 
 def qa_page() -> rx.Component:
-    return rx.container(
+    return rx.box(
         rx.vstack(
             ticker(),
             question(),
             response(),
             spacing="6",
-        )
+            align="stretch"
+        ),
+        width="50%"
     )
 
 def index() -> rx.Component:
     # Welcome Page (Index)
-    return rx.vstack(
-        navbar(),
-        qa_page(),
-        spacing="6",
-        width="100%",
-        align_items="center",
+    return rx.center(
+        rx.vstack(
+            navbar(),
+            qa_page(),
+            spacing="6",
+            width="100%",
+            align_items="center",
+        ),
+        background="radial-gradient(circle at 22% 11%,rgba(62, 180, 137,.20),hsla(0,0%,100%,0) 19%),radial-gradient(circle at 82% 25%,rgba(33,150,243,.18),hsla(0,0%,100%,0) 35%),radial-gradient(circle at 25% 61%,rgba(250, 128, 114, .28),hsla(0,0%,100%,0) 55%)",
     )
 
-app = rx.App()
+app = rx.App(
+    theme=rx.theme(
+        appearance="light",
+        has_background=True,
+        radius="large",
+        accent_color="iris",
+        background_color="iris",
+    )
+)
 app.add_page(index)
